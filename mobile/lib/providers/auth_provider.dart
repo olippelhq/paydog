@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 
@@ -30,6 +31,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       _user = await _service.login(email, password);
       _status = AuthStatus.authenticated;
+      DatadogSdk.instance.setUserInfo(id: _user!.id, email: _user!.email, name: _user!.name);
       return true;
     } catch (e) {
       _error = _parseError(e);
@@ -47,6 +49,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       _user = await _service.register(name, email, password);
       _status = AuthStatus.authenticated;
+      DatadogSdk.instance.setUserInfo(id: _user!.id, email: _user!.email, name: _user!.name);
       return true;
     } catch (e) {
       _error = _parseError(e);
@@ -61,6 +64,7 @@ class AuthProvider extends ChangeNotifier {
     await _service.logout();
     _user = null;
     _status = AuthStatus.unauthenticated;
+    DatadogSdk.instance.clearUserInfo();
     notifyListeners();
   }
 

@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { datadogLogs } from '@datadog/browser-logs'
 import { useAuthStore } from '@/store/auth'
 
 const AUTH_URL = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:8001'
@@ -48,6 +49,11 @@ function addAuthInterceptor(api: typeof authApi) {
           useAuthStore.getState().logout()
         }
       }
+      datadogLogs.logger.error('API error', {
+        status: error.response?.status,
+        url: error.config?.url,
+        method: error.config?.method,
+      })
       return Promise.reject(error)
     },
   )

@@ -1,21 +1,82 @@
 PODS:
+  - datadog_flutter_plugin (0.0.1):
+    - DatadogCore (= 3.4.0)
+    - DatadogCrashReporting (= 3.4.0)
+    - DatadogInternal (= 3.4.0)
+    - DatadogLogs (= 3.4.0)
+    - DatadogRUM (= 3.4.0)
+    - DictionaryCoder (= 1.2.0)
+    - Flutter
+  - datadog_session_replay (0.0.1):
+    - DatadogCore (~> 3)
+    - Flutter
+  - DatadogCore (3.4.0):
+    - DatadogInternal (= 3.4.0)
+  - DatadogCrashReporting (3.4.0):
+    - DatadogInternal (= 3.4.0)
+    - PLCrashReporter (~> 1.12.0)
+  - DatadogInternal (3.4.0)
+  - DatadogLogs (3.4.0):
+    - DatadogInternal (= 3.4.0)
+  - DatadogRUM (3.4.0):
+    - DatadogInternal (= 3.4.0)
+  - DictionaryCoder (1.2.0)
   - Flutter (1.0.0)
   - flutter_secure_storage (6.0.0):
     - Flutter
+  - objective_c (0.0.1):
+    - Flutter
+  - path_provider_foundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - PLCrashReporter (1.12.0)
 
 DEPENDENCIES:
+  - datadog_flutter_plugin (from `.symlinks/plugins/datadog_flutter_plugin/ios`)
+  - datadog_session_replay (from `.symlinks/plugins/datadog_session_replay/ios`)
   - Flutter (from `Flutter`)
   - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
+  - objective_c (from `.symlinks/plugins/objective_c/ios`)
+  - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
+
+SPEC REPOS:
+  trunk:
+    - DatadogCore
+    - DatadogCrashReporting
+    - DatadogInternal
+    - DatadogLogs
+    - DatadogRUM
+    - DictionaryCoder
+    - PLCrashReporter
 
 EXTERNAL SOURCES:
+  datadog_flutter_plugin:
+    :path: ".symlinks/plugins/datadog_flutter_plugin/ios"
+  datadog_session_replay:
+    :path: ".symlinks/plugins/datadog_session_replay/ios"
   Flutter:
     :path: Flutter
   flutter_secure_storage:
     :path: ".symlinks/plugins/flutter_secure_storage/ios"
+  objective_c:
+    :path: ".symlinks/plugins/objective_c/ios"
+  path_provider_foundation:
+    :path: ".symlinks/plugins/path_provider_foundation/darwin"
 
 SPEC CHECKSUMS:
+  datadog_flutter_plugin: ad72ef68bd22e37bf1d556eccc36d57a5a7cab07
+  datadog_session_replay: 29f1e456d30632bb22ad1dd0eceb15811d2fbc6c
+  DatadogCore: 8c384b6338c49534e43fdf7f9a0508b62bf1d426
+  DatadogCrashReporting: 103bfb4077db2ccee1846f71e53712972732d3b7
+  DatadogInternal: b0372935ad8dde5ad06960fe8d88c39b2cc92bcc
+  DatadogLogs: 484bb1bfe0c9a7cb2a7d9733f61614e8ea7b2f3a
+  DatadogRUM: 00069b27918e0ce4a9223b87b4bfa7929d6a0a1f
+  DictionaryCoder: f7115fcd074c8301e91f2eb862da1ea7d0385e61
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
+  objective_c: 89e720c30d716b036faf9c9684022048eee1eee2
+  path_provider_foundation: bb55f6dbba17d0dccd6737fe6f7f34fbd0376880
+  PLCrashReporter: db59ef96fa3d25f3650040d02ec2798cffee75f2
 
 PODFILE CHECKSUM: 3c63482e143d1b91d2d2560aee9fb04ecc74ac7e
 

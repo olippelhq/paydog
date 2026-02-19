@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
+import { datadogRum } from '@datadog/browser-rum'
 import { authService } from '@/services/api'
 import { useAuthStore } from '@/store/auth'
 
@@ -16,6 +17,7 @@ export function useLogin() {
       // Limpa cache do usuário anterior antes de navegar
       queryClient.clear()
       setAuth(access_token, refresh_token, user)
+      datadogRum.setUser({ id: user.id, email: user.email, name: user.name })
       navigate('/dashboard')
     },
   })
@@ -33,6 +35,7 @@ export function useRegister() {
       const { access_token, refresh_token, user } = res.data
       queryClient.clear()
       setAuth(access_token, refresh_token, user)
+      datadogRum.setUser({ id: user.id, email: user.email, name: user.name })
       navigate('/dashboard')
     },
   })
@@ -46,6 +49,7 @@ export function useLogout() {
   return () => {
     // Limpa todo o cache antes de deslogar
     queryClient.clear()
+    datadogRum.clearUser()
     logout()
     navigate('/login')
   }

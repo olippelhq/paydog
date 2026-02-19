@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import '../models/transaction.dart';
 import '../services/payment_service.dart';
 
 class PaymentProvider extends ChangeNotifier {
   final PaymentService _service = PaymentService();
+  final _logger = DatadogSdk.instance.logs?.createLogger(DatadogLoggerConfiguration());
 
   double? _balance;
   String? _accountId;
@@ -82,6 +84,7 @@ class PaymentProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       _transferError = _parseError(e);
+      _logger?.error('Transfer failed', attributes: {'error': e.toString()});
       return false;
     } finally {
       _transferring = false;
