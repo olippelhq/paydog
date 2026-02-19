@@ -1,0 +1,107 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dogpay-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dogpay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dogpay_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-dogpay}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./services/auth-service/migrations:/docker-entrypoint-initdb.d/auth:ro
+      - ./services/payment-service/migrations:/docker-entrypoint-initdb.d/payment:ro
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/00-init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dogpay} -d ${POSTGRES_DB:-dogpay}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dogpay-network
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: dogpay-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-dogpay}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-dogpay_secret}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dogpay-network
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: dogpay-auth
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      RABBITMQ_HOST: rabbitmq
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - dogpay-network
+    restart: unless-stopped
+
+  payment-service:
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    container_name: dogpay-payment
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      RABBITMQ_HOST: rabbitmq
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - dogpay-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dogpay-frontend
+    environment:
+      VITE_AUTH_API_URL: http://localhost:8001
+      VITE_PAYMENT_API_URL: http://localhost:8002
+    ports:
+      - "5173:80"
+    depends_on:
+      - auth-service
+      - payment-service
+    networks:
+      - dogpay-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+
+networks:
+  dogpay-network:
+    driver: bridge

@@ -1,0 +1,4 @@
+-- Seed data for testing
+-- This runs after auth migrations have been applied
+-- Insert test accounts linked to test users (if they exist)
+-- Note: actual users are created via the auth service API
