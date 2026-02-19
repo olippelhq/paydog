@@ -111,7 +111,7 @@ class _BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer<PaymentProvider>(
-      builder: (_, payments, __) => Container(
+      builder: (context, payments, child) => Container(
         width: double.infinity,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
@@ -175,8 +175,67 @@ class _TransferCardState extends State<_TransferCard> {
   final _amtCtrl   = TextEditingController();
   final _descCtrl  = TextEditingController();
 
+  OverlayEntry? _loadingToast;
+
+  void _showLoadingToast() {
+    _loadingToast = OverlayEntry(
+      builder: (_) => Positioned(
+        top: 80,
+        left: 32,
+        right: 32,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: BoxDecoration(
+              color: ddPurple800.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2.5),
+                ),
+                SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    'Processando transferência...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    Overlay.of(context).insert(_loadingToast!);
+    Future.delayed(const Duration(seconds: 5), _dismissLoadingToast);
+  }
+
+  void _dismissLoadingToast() {
+    _loadingToast?.remove();
+    _loadingToast = null;
+  }
+
   @override
   void dispose() {
+    _loadingToast?.remove();
     _emailCtrl.dispose();
     _amtCtrl.dispose();
     _descCtrl.dispose();
@@ -187,11 +246,13 @@ class _TransferCardState extends State<_TransferCard> {
     if (!_formKey.currentState!.validate()) return;
     final payments = context.read<PaymentProvider>();
     payments.clearTransferFeedback();
+    _showLoadingToast();
     final ok = await payments.transfer(
       toEmail: _emailCtrl.text.trim(),
       amount: double.parse(_amtCtrl.text.replaceAll(',', '.')),
       description: _descCtrl.text.trim(),
     );
+    _dismissLoadingToast();
     if (ok) {
       _emailCtrl.clear();
       _amtCtrl.clear();
@@ -251,7 +312,7 @@ class _TransferCardState extends State<_TransferCard> {
               const SizedBox(height: 16),
 
               Consumer<PaymentProvider>(
-                builder: (_, payments, __) {
+                builder: (context, payments, child) {
                   return Column(
                     children: [
                       if (payments.transferSuccess != null)
@@ -304,7 +365,7 @@ class _HistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer<PaymentProvider>(
-      builder: (_, payments, __) {
+      builder: (context, payments, child) {
         return Card(
           child: Padding(
             padding: const EdgeInsets.all(20),
