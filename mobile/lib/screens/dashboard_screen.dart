@@ -18,19 +18,21 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  PaymentProvider? _paymentProvider;
+
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final payments = context.read<PaymentProvider>();
-      payments.loadData();
-      payments.startAutoRefresh();
-    });
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_paymentProvider == null) {
+      _paymentProvider = context.read<PaymentProvider>();
+      _paymentProvider!.loadData();
+      _paymentProvider!.startAutoRefresh();
+    }
   }
 
   @override
   void dispose() {
-    context.read<PaymentProvider>().stopAutoRefresh();
+    _paymentProvider?.stopAutoRefresh();
     super.dispose();
   }
 
