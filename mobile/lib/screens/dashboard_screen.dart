@@ -25,8 +25,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.didChangeDependencies();
     if (_paymentProvider == null) {
       _paymentProvider = context.read<PaymentProvider>();
-      _paymentProvider!.loadData();
-      _paymentProvider!.startAutoRefresh();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _paymentProvider!.loadData();
+        _paymentProvider!.startAutoRefresh();
+      });
     }
   }
 
@@ -180,7 +182,7 @@ class _TransferCardState extends State<_TransferCard> {
   void _showLoadingToast() {
     _loadingToast = OverlayEntry(
       builder: (_) => Positioned(
-        top: 80,
+        bottom: 48,
         left: 32,
         right: 32,
         child: Material(
@@ -224,8 +226,8 @@ class _TransferCardState extends State<_TransferCard> {
         ),
       ),
     );
-    Overlay.of(context).insert(_loadingToast!);
-    Future.delayed(const Duration(seconds: 5), _dismissLoadingToast);
+    Overlay.of(context, rootOverlay: true).insert(_loadingToast!);
+    Future.delayed(const Duration(seconds: 8), _dismissLoadingToast);
   }
 
   void _dismissLoadingToast() {
@@ -247,12 +249,16 @@ class _TransferCardState extends State<_TransferCard> {
     final payments = context.read<PaymentProvider>();
     payments.clearTransferFeedback();
     _showLoadingToast();
-    final ok = await payments.transfer(
-      toEmail: _emailCtrl.text.trim(),
-      amount: double.parse(_amtCtrl.text.replaceAll(',', '.')),
-      description: _descCtrl.text.trim(),
-    );
+    final results = await Future.wait([
+      payments.transfer(
+        toEmail: _emailCtrl.text.trim(),
+        amount: double.parse(_amtCtrl.text.replaceAll(',', '.')),
+        description: _descCtrl.text.trim(),
+      ),
+      Future.delayed(const Duration(milliseconds: 1500)),
+    ]);
     _dismissLoadingToast();
+    final ok = results[0] as bool;
     if (ok) {
       _emailCtrl.clear();
       _amtCtrl.clear();
