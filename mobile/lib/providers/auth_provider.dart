@@ -28,13 +28,24 @@ class AuthProvider extends ChangeNotifier {
     _loading = true;
     _error = null;
     notifyListeners();
+    final sw = Stopwatch()..start();
     try {
       _user = await _service.login(email, password);
       _status = AuthStatus.authenticated;
       DatadogSdk.instance.setUserInfo(id: _user!.id, email: _user!.email, name: _user!.name);
+      DatadogSdk.instance.rum?.addAction(
+        RumActionType.custom,
+        'login',
+        {'success': true, 'user_id': _user!.id, 'duration_ms': sw.elapsedMilliseconds},
+      );
       return true;
     } catch (e) {
       _error = _parseError(e);
+      DatadogSdk.instance.rum?.addAction(
+        RumActionType.custom,
+        'login',
+        {'success': false, 'error': _error, 'duration_ms': sw.elapsedMilliseconds},
+      );
       return false;
     } finally {
       _loading = false;

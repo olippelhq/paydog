@@ -56,6 +56,7 @@ DogPay é uma aplicação que simula um serviço de pagamentos completo com arqu
 - **Roteamento**: React Router v6
 - **HTTP**: Axios + TanStack Query (React Query) para cache
 - **Auth state**: Zustand (store para token JWT e dados do usuário)
+- **Observabilidade**: `@datadog/browser-rum` + `@datadog/browser-logs` — RUM, Session Replay, Logs
 - **Porta local**: 5173
 
 ### Frontend Mobile
@@ -65,6 +66,7 @@ DogPay é uma aplicação que simula um serviço de pagamentos completo com arqu
 - **Storage**: flutter_secure_storage (tokens armazenados com segurança)
 - **Navegação**: go_router
 - **Tema**: Paleta Datadog purple (`#632CA6`) — consistente com o frontend web
+- **Observabilidade**: `datadog_flutter_plugin ^3.0.0` + `datadog_session_replay` — RUM, Session Replay, Logs, crash reporting
 - **Plataformas**: iOS, Android, macOS desktop
 - **Simulador**: iPhone 16 iOS 26.2 (`A85DE849-575F-4276-8AC6-46E3312DE551`)
 
@@ -270,6 +272,49 @@ Consumer (background goroutine):
 - Simulador "iPhone 16 - DogPay" criado (`A85DE849-575F-4276-8AC6-46E3312DE551`)
 - App rodando no simulador iPhone 16 iOS 26.2
 
+#### Observabilidade Fase 1 — Datadog RUM + Logs + Session Replay
+**Web** (`frontend/`):
+- `@datadog/browser-rum` + `@datadog/browser-logs` instalados e inicializados em `src/main.tsx` antes do `ReactDOM.createRoot`
+- RUM com `sessionReplaySampleRate: 100`, `trackUserInteractions`, `trackResources`, `trackLongTasks`
+- Logs com `forwardErrorsToLogs: true`, `forwardConsoleLogs: 'all'`
+- User context: `datadogRum.setUser()` após login/register, `clearUser()` no logout (`src/hooks/useAuth.ts`)
+- Erros de API logados via `datadogLogs.logger.error()` no interceptor Axios (`src/services/api.ts`)
+- Service: `paydog---web`, env: `sandbox`
+
+**Mobile** (`mobile/`):
+- `datadog_flutter_plugin ^3.0.0` + `datadog_session_replay ^1.0.0-preview.9`
+- `DatadogSdk.runApp` substitui `runApp` padrão — garante inicialização antes do primeiro frame
+- RUM: `applicationId: 6f0f8457-e787-494e-bc12-eefba936c769`, `detectLongTasks: true`
+- Session Replay: `replaySampleRate: 100`, `maskSensitiveInputs`, `maskNonAssetsOnly`, `TouchPrivacyLevel.show`
+- `SessionReplayCapture` widget acima do `MaterialApp.router` — essencial para capturar widget tree Flutter (sem ele, apenas a camada nativa é gravada)
+- `DatadogNavigationObserver` no GoRouter — page views automáticos por rota
+- `setUserInfo(id, email, name)` após login/register, `clearUserInfo()` no logout (`AuthProvider`)
+- Logger Datadog nos blocos `catch` de transfer (`PaymentProvider`)
+- Upgrade de `datadog_flutter_plugin 2.16.1 → 3.0.1` necessário para suporte completo a Session Replay
+- `pod repo update` necessário após upgrade do plugin (nova versão nativa dos pods Datadog)
+
+**Aprendizados**:
+- `DatadogDioInterceptor` não existe no `datadog_flutter_plugin` — HTTP tracking no iOS é feito pelo SDK nativo automaticamente
+- `SessionReplayCapture` é obrigatório para `has_full_snapshot: true` no replay Flutter
+- `ImagePrivacyLevel.maskNonBundledImages` não existe — usar `maskNonAssetsOnly`
+- Em Flutter v3, `setUserInfo()` sem `id` foi removido — usar `clearUserInfo()` para limpar
+- Session replay validado via API: `POST /api/v2/rum/events/search` com `@session.has_replay:true`
+
+### 2026-02-23 — Observabilidade Fase 2: RUM Custom Actions
+
+**Mobile** (`mobile/`):
+- Custom Actions adicionadas em `AuthProvider` (login) e `PaymentProvider` (transfer)
+- Abordagem: `addAction(RumActionType.custom, ...)` + `Stopwatch` manual para duração
+- `startAction`/`stopAction` descartados — conflito com auto-detecção de `tap` pelo SDK (apenas uma action ativa por view)
+- **Login** (`auth_provider.dart`): atributos `success`, `user_id`, `duration_ms`
+- **Transfer** (`payment_provider.dart`): atributos `success`, `transaction_id`, `amount`, `duration_ms`, `feedback_message`
+- `feedback_message` captura o texto dinâmico exibido ao usuário (ex: `"Transferência #a1b2c3d4 em processamento!"` ou `"Destinatário não encontrado"`)
+
+**Aprendizados**:
+- `RumUserActionType` e `startUserAction`/`stopUserAction` não existem na v3.x — API correta é `RumActionType` + `startAction`/`stopAction`/`addAction`
+- `startAction`/`stopAction` são descartados se outro action (ex: tap auto-detectado) estiver ativo na mesma view
+- Solução: `addAction` (instantâneo) com `Stopwatch` manual para capturar `duration_ms` como atributo
+
 ---
 
 ## Comandos Úteis
@@ -300,9 +345,12 @@ flutter run -d macos
 
 ## Próximas Iterações
 
-1. **Observabilidade**: Adicionar tracing (OpenTelemetry), métricas (Prometheus), logs estruturados (zerolog)
-2. **Testes**: Unit tests para handlers e repository em Go; widget tests no Flutter
-3. **Deploy AWS**: ECS/Fargate para serviços Go, RDS para PostgreSQL, SQS substituindo RabbitMQ, CloudFront para o frontend web
-4. **API Gateway**: Nginx ou AWS API Gateway como ponto único de entrada
-5. **Notificações**: Push notification no mobile ao completar transferências
-6. **CI/CD**: GitHub Actions para build, test e deploy automático
+1. **MiracleMoney Service**: Novo microserviço Go para depositar créditos arbitrários em contas — integrado ao web e mobile
+2. **Detalhamento de Transações**: Tela/página de detalhe de transação individual no web e mobile
+3. **Interface Administrativa**: Dashboard para acompanhar todas as transações em tempo real com filtros e totais
+4. **Migração para EKS**: Kubernetes manifests + RDS + Amazon MQ + ECR + ALB Ingress + Route 53
+5. **APM nos Serviços Go**: `dd-trace-go` nos serviços auth e payment — tracing, correlação trace-RUM, logs estruturados com `zerolog`
+6. **Automações de Fluxo**: Bots e workers para manter fluxo contínuo de transações (demonstração + geração de dados Datadog)
+7. **Testes Automatizados**: Unit tests Go + widget tests Flutter
+8. **Push Notifications**: FCM/APNs no mobile ao completar transferências
+9. **CI/CD**: GitHub Actions para build, test e deploy automático

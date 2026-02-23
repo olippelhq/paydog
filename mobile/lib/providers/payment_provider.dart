@@ -72,6 +72,7 @@ class PaymentProvider extends ChangeNotifier {
     _transferError = null;
     _transferSuccess = null;
     notifyListeners();
+    final sw = Stopwatch()..start();
     try {
       final txId = await _service.transfer(
         toEmail: toEmail,
@@ -79,12 +80,22 @@ class PaymentProvider extends ChangeNotifier {
         description: description,
       );
       _transferSuccess = 'Transferência #${txId.substring(0, 8)} em processamento!';
+      DatadogSdk.instance.rum?.addAction(
+        RumActionType.custom,
+        'transfer',
+        {'success': true, 'transaction_id': txId, 'amount': amount, 'duration_ms': sw.elapsedMilliseconds, 'feedback_message': _transferSuccess},
+      );
       // Refresh data after 1.5s to catch completed status
       Future.delayed(const Duration(milliseconds: 1500), refresh);
       return true;
     } catch (e) {
       _transferError = _parseError(e);
       _logger?.error('Transfer failed', attributes: {'error': e.toString()});
+      DatadogSdk.instance.rum?.addAction(
+        RumActionType.custom,
+        'transfer',
+        {'success': false, 'error': _transferError, 'amount': amount, 'duration_ms': sw.elapsedMilliseconds, 'feedback_message': _transferError},
+      );
       return false;
     } finally {
       _transferring = false;
